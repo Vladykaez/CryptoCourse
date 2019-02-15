@@ -4,6 +4,7 @@ import android.content.pm.ActivityInfo;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,6 +20,8 @@ public class MainActivity extends AppCompatActivity {
 
     TextView txt;
     TextView txt2;
+    boolean flag = false;
+    float hrnrate = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,10 +34,19 @@ public class MainActivity extends AppCompatActivity {
     public void Bitcoin() {
         getBitCoinCourse getbitcoin = new getBitCoinCourse();
         getbitcoin.execute();
+        txt = (TextView) findViewById(R.id.txt);
         try {
-            txt = (TextView)findViewById(R.id.txt);
             String string = getbitcoin.get();
-            txt.setText("BitCoin - " + string.split(" ")[0]);
+            if(flag) {
+                float hryvna = Float.parseFloat(string.substring(0,7));
+                if (hrnrate == 0)
+                    hrnrate = getHrn();
+                hryvna *= hrnrate;
+                String hrn = Float.toString(hryvna).split("\\.")[0] +"."+ Float.toString(hryvna).split("\\.")[0].substring(0,2);
+                txt.setText("Bitcoin - " + hrn + "₴");
+            } else {
+                txt.setText("Bitcoin - " + string.split(" ")[0]);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -44,24 +56,38 @@ public class MainActivity extends AppCompatActivity {
     public void Ethereum() {
         getEthereumCourse getEthereum = new getEthereumCourse();
         getEthereum.execute();
+        txt2 = (TextView)findViewById(R.id.txt2);
         try {
-            txt2 = (TextView)findViewById(R.id.txt2);
             String string = getEthereum.get();
-            string = string.split(" ")[0];
-            txt2.setText("Ethereum - " + string);
+            if (flag) {
+                float hrn = Float.parseFloat(string.substring(0,5));
+                if (hrnrate == 0)
+                    hrnrate = getHrn();
+                hrn *= hrnrate;
+                String hryvna = Float.toString(hrn).split("\\.")[0] + "." + Float.toString(hrn).split("\\.")[1].substring(0, 2);
+                txt2.setText("Ethereum - " + hryvna + "₴");
+            } else {
+                txt2.setText("Ethereum - " + string.split(" ")[0]);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
             e.printStackTrace();
         }
     }
-
-    public void onClick(View v) {
+    public void onClickGetRate(View v) {
         Bitcoin();
         Ethereum();
         Toast.makeText(this, "This may take some time...", Toast.LENGTH_SHORT).show();
     }
-
+    public void onClickConvert(View v) {
+        if(flag)
+            flag = false;
+        else
+            flag = true;
+        Bitcoin();
+        Ethereum();
+    }
     class getBitCoinCourse extends AsyncTask<Void, Void, String> {
         Elements elem;
         @Override
@@ -89,5 +115,33 @@ public class MainActivity extends AppCompatActivity {
             String str = elem.text();
             return str;
         }
+    }
+    class getHryvnaCourse extends AsyncTask<Void, Void, String> {
+        Elements elem;
+        @Override
+        protected String doInBackground(Void... params) {
+            try {
+                Document doc = Jsoup.connect("https://kurs.com.ua/valyuta/usd").get();
+                elem = doc.select(".ipsKurs_rate");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            String str = elem.text();
+            str = str.split(" ")[0];
+            return str;
+        }
+    }
+    public float getHrn() {
+        getHryvnaCourse getHrn = new getHryvnaCourse();
+        getHrn.execute();
+        float hryvnaRate = 0;
+        try {
+            hryvnaRate = Float.parseFloat(getHrn.get());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return hryvnaRate;
     }
 }
