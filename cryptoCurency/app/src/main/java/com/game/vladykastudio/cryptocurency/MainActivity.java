@@ -1,13 +1,23 @@
 package com.game.vladykastudio.cryptocurency;
 
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
+import android.media.Image;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.EventLogTags;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,9 +30,10 @@ import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView txt, txt2, txt3;
+    TextView txt, txt2, txt3, txt4;
+    Button btn;
+    ImageView img;
     boolean flag = false;
-    float UAHCourse = getHrn();
     SwipeRefreshLayout swipe;
 
     @Override
@@ -30,13 +41,27 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        swipe = (SwipeRefreshLayout)findViewById(R.id.swipe);
-        updateRate();
+        txt = (TextView)findViewById(R.id.txt);
+        txt2 = (TextView)findViewById(R.id.txt2);
+        txt3 = (TextView)findViewById(R.id.txt3);
+        txt4 = (TextView)findViewById(R.id.textView2);
+        btn = (Button)findViewById(R.id.button2);
+        img = (ImageView)findViewById(R.id.imageView);
+        swipe = (SwipeRefreshLayout) findViewById(R.id.swipe);
+        if(isOnline()) {
+            updateRate();
+            setVis2();
+        }
+        else
+            setVis();
         swipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                updateRate();
-                Toast.makeText(MainActivity.this, "This may take some time...", Toast.LENGTH_SHORT).show();
+                if(isOnline()) {
+                    setVis2();
+                    updateRate();
+                } else
+                    setVis();
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -46,64 +71,32 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    public void bitcoin() {
-        CryptocurrencyRate getBitcoin = new CryptocurrencyRate("bitcoin");
-        getBitcoin.execute();
-        txt = (TextView) findViewById(R.id.txt);
+    public String setCryptocurrency(String cryptocurrencyName, int subIndex) {
+        CryptocurrencyRate getCryptocurrency = new CryptocurrencyRate(cryptocurrencyName);
+        getCryptocurrency.execute();
         try {
-            String string = getBitcoin.get();
-            if(flag)
-                convertToUAH(string, "Bitcoin", 7, txt);
-            else
-                txt.setText("Bitcoin - " + string.split(" ")[0]);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-    }
-    public void ethereum() {
-        CryptocurrencyRate getEthereum = new CryptocurrencyRate("ethereum");
-        getEthereum.execute();
-        txt2 = (TextView)findViewById(R.id.txt2);
-        try {
-            String string = getEthereum.get();
+            String string = getCryptocurrency.get().split(" ")[0];
+            float uah = Float.parseFloat(string.substring(0, string.length()-1));
+            String hrn = String.valueOf(uah * getHrn());
             if (flag)
-                convertToUAH(string, "Ethereum", 5, txt2);
+                return cryptocurrencyName + " - " + hrn.substring(0, hrn.length()-subIndex) + "₴";
             else
-                txt2.setText("Ethereum - " + string.split(" ")[0]);
+                return cryptocurrencyName + " - " + string;
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
             e.printStackTrace();
         }
-    }
-    public void litecoin() {
-        CryptocurrencyRate getLitecoin = new CryptocurrencyRate("litecoin");
-        getLitecoin.execute();
-        txt3 = (TextView) findViewById(R.id.txt3);
-        try {
-            String string = getLitecoin.get();
-            if(flag)
-                convertToUAH(string, "Litecoin", 4, txt3);
-            else
-                txt3.setText("Litecoin - " + string.split(" ")[0]);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-    }
-    public void convertToUAH(String string, String cryptoCurrencyName, int subEndIndex, TextView txt) {
-        float UAH = Float.parseFloat(string.substring(0, subEndIndex));
-        UAH *= UAHCourse;
-        String uah = Float.toString(UAH).split("\\.")[0] +"."+ Float.toString(UAH).split("\\.")[0].substring(0,2);
-        txt.setText(cryptoCurrencyName + " - " + uah + "₴");
+        return null;
     }
     public void onClickConvert(View v) {
-        if(flag) flag = false;
-        else flag = true;
-        updateRate();
+        if(isOnline()) {
+            flag = !flag;
+            updateRate();
+        } else {
+            Toast.makeText(this, "No internet connection...", Toast.LENGTH_SHORT).show();
+            setVis();
+        }
     }
     class CryptocurrencyRate extends AsyncTask<Void, Void, String> {
         Elements elem;
@@ -152,9 +145,33 @@ public class MainActivity extends AppCompatActivity {
         }
         return hryvnaRate;
     }
+    protected boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnected())
+            return true;
+        else
+            return false;
+    }
+    public void setVis() {
+        txt.setVisibility(View.INVISIBLE);
+        txt2.setVisibility(View.INVISIBLE);
+        txt3.setVisibility(View.INVISIBLE);
+        txt4.setVisibility(View.VISIBLE);
+        btn.setVisibility(View.INVISIBLE);
+        img.setVisibility(View.VISIBLE);
+    }
+    public void setVis2() {
+        txt.setVisibility(View.VISIBLE);
+        txt2.setVisibility(View.VISIBLE);
+        txt3.setVisibility(View.VISIBLE);
+        txt4.setVisibility(View.INVISIBLE);
+        btn.setVisibility(View.VISIBLE);
+        img.setVisibility(View.INVISIBLE);
+    }
     public void updateRate() {
-        bitcoin();
-        ethereum();
-        litecoin();
+        txt.setText(setCryptocurrency("Bitcoin", 0));
+        txt2.setText(setCryptocurrency("Ethereum", 2));
+        txt3.setText(setCryptocurrency("Litecoin", 2));
     }
 }
