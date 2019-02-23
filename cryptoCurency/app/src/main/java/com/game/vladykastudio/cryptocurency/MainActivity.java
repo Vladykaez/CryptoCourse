@@ -3,6 +3,7 @@ package com.game.vladykastudio.cryptocurency;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.media.Image;
 import android.net.ConnectivityManager;
@@ -30,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView txt, txt2, txt3, txt4;
+    TextView txt, txt2, txt3;
     Button btn;
     ImageView img;
     boolean flag = false;
@@ -44,24 +45,23 @@ public class MainActivity extends AppCompatActivity {
         txt = (TextView)findViewById(R.id.txt);
         txt2 = (TextView)findViewById(R.id.txt2);
         txt3 = (TextView)findViewById(R.id.txt3);
-        txt4 = (TextView)findViewById(R.id.textView2);
-        btn = (Button)findViewById(R.id.button2);
-        img = (ImageView)findViewById(R.id.imageView);
+        txt.setText("Bitcoin - ???");
+        txt2.setText("Ethereum - ???");
+        txt3.setText("Litecoin - ???");
+        final Intent intent = new Intent(this, Main2Activity.class);
         swipe = (SwipeRefreshLayout) findViewById(R.id.swipe);
         if(isOnline()) {
-            updateRate();
-            setVis2();
+            setCryptocurrency();
+        } else {
+            startActivity(intent);
         }
-        else
-            setVis();
         swipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                if(isOnline()) {
-                    setVis2();
-                    updateRate();
-                } else
-                    setVis();
+                if(isOnline())
+                    setCryptocurrency();
+                else
+                    startActivity(intent);
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -71,39 +71,31 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    public String setCryptocurrency(String cryptocurrencyName, int subIndex) {
-        CryptocurrencyRate getCryptocurrency = new CryptocurrencyRate(cryptocurrencyName);
-        getCryptocurrency.execute();
-        try {
-            String string = getCryptocurrency.get().split(" ")[0];
-            float uah = Float.parseFloat(string.substring(0, string.length()-1));
-            String hrn = String.valueOf(uah * getHrn());
-            if (flag)
-                return cryptocurrencyName + " - " + hrn.substring(0, hrn.length()-subIndex) + "₴";
-            else
-                return cryptocurrencyName + " - " + string;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-        return null;
+    public void setCryptocurrency() {
+        new CryptocurrencyRate("Bitcoin", txt, 0).execute();
+        new CryptocurrencyRate("Ethereum", txt2, 2).execute();
+        new CryptocurrencyRate("Litecoin", txt3, 2).execute();
     }
     public void onClickConvert(View v) {
+        final Intent intent = new Intent(this, Main2Activity.class);
         if(isOnline()) {
             flag = !flag;
-            updateRate();
+            setCryptocurrency();
         } else {
             Toast.makeText(this, "No internet connection...", Toast.LENGTH_SHORT).show();
-            setVis();
+            startActivity(intent);
         }
     }
     class CryptocurrencyRate extends AsyncTask<Void, Void, String> {
         Elements elem;
         String cryptocurrencyName;
+        TextView txt;
+        int subIndex;
 
-        public CryptocurrencyRate(String cryptocurrencyName) {
+        public CryptocurrencyRate(String cryptocurrencyName, TextView txt, int subIndex) {
             this.cryptocurrencyName = cryptocurrencyName;
+            this.txt = txt;
+            this.subIndex = subIndex;
         }
 
         @Override
@@ -116,6 +108,16 @@ public class MainActivity extends AppCompatActivity {
             }
             String str = elem.text();
             return str;
+        }
+        @Override
+        protected void onPostExecute(String str) {
+            if(flag) {
+                String string = str.split(" ")[0];
+                float uah = Float.parseFloat(string.substring(0, string.length()-1));
+                String hrn = String.valueOf(uah * getHrn());
+                txt.setText(cryptocurrencyName + " - " + hrn.substring(0, hrn.length()-subIndex) + "₴");
+            } else
+                txt.setText(cryptocurrencyName + " - " + str.split(" ")[0]);
         }
     }
     class HryvnaCourse extends AsyncTask<Void, Void, String> {
@@ -152,26 +154,5 @@ public class MainActivity extends AppCompatActivity {
             return true;
         else
             return false;
-    }
-    public void setVis() {
-        txt.setVisibility(View.INVISIBLE);
-        txt2.setVisibility(View.INVISIBLE);
-        txt3.setVisibility(View.INVISIBLE);
-        txt4.setVisibility(View.VISIBLE);
-        btn.setVisibility(View.INVISIBLE);
-        img.setVisibility(View.VISIBLE);
-    }
-    public void setVis2() {
-        txt.setVisibility(View.VISIBLE);
-        txt2.setVisibility(View.VISIBLE);
-        txt3.setVisibility(View.VISIBLE);
-        txt4.setVisibility(View.INVISIBLE);
-        btn.setVisibility(View.VISIBLE);
-        img.setVisibility(View.INVISIBLE);
-    }
-    public void updateRate() {
-        txt.setText(setCryptocurrency("Bitcoin", 0));
-        txt2.setText(setCryptocurrency("Ethereum", 2));
-        txt3.setText(setCryptocurrency("Litecoin", 2));
     }
 }
