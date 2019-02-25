@@ -36,18 +36,17 @@ public class MainActivity extends AppCompatActivity {
     ImageView img;
     boolean flag = false;
     SwipeRefreshLayout swipe;
+    float hryvnaCourse;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        new HryvnaCourse().execute();
         txt = (TextView)findViewById(R.id.txt);
         txt2 = (TextView)findViewById(R.id.txt2);
         txt3 = (TextView)findViewById(R.id.txt3);
-        txt.setText("Bitcoin - ???");
-        txt2.setText("Ethereum - ???");
-        txt3.setText("Litecoin - ???");
         final Intent intent = new Intent(this, Main2Activity.class);
         swipe = (SwipeRefreshLayout) findViewById(R.id.swipe);
         if(isOnline()) {
@@ -72,9 +71,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     public void setCryptocurrency() {
-        new CryptocurrencyRate("Bitcoin", txt, 0).execute();
-        new CryptocurrencyRate("Ethereum", txt2, 2).execute();
-        new CryptocurrencyRate("Litecoin", txt3, 2).execute();
+        new CryptocurrencyRate("Bitcoin", 0, txt).execute();
+        new CryptocurrencyRate("Ethereum", 0, txt2).execute();
+        new CryptocurrencyRate("Litecoin", 0, txt3).execute();
     }
     public void onClickConvert(View v) {
         final Intent intent = new Intent(this, Main2Activity.class);
@@ -92,10 +91,10 @@ public class MainActivity extends AppCompatActivity {
         TextView txt;
         int subIndex;
 
-        public CryptocurrencyRate(String cryptocurrencyName, TextView txt, int subIndex) {
+        public CryptocurrencyRate(String cryptocurrencyName, int subIndex, TextView txt) {
             this.cryptocurrencyName = cryptocurrencyName;
-            this.txt = txt;
             this.subIndex = subIndex;
+            this.txt = txt;
         }
 
         @Override
@@ -114,10 +113,13 @@ public class MainActivity extends AppCompatActivity {
             if(flag) {
                 String string = str.split(" ")[0];
                 float uah = Float.parseFloat(string.substring(0, string.length()-1));
-                String hrn = String.valueOf(uah * getHrn());
-                txt.setText(cryptocurrencyName + " - " + hrn.substring(0, hrn.length()-subIndex) + "₴");
-            } else
-                txt.setText(cryptocurrencyName + " - " + str.split(" ")[0]);
+                String hrn = String.valueOf(uah * hryvnaCourse);
+                if(hrn.split("\\.")[1].length() > 2 && subIndex < 2)
+                    subIndex++;
+                txt.setText(hrn.substring(0, hrn.length()-subIndex) + "₴");
+            } else {
+                txt.setText(str.split(" ")[0]);
+            }
         }
     }
     class HryvnaCourse extends AsyncTask<Void, Void, String> {
@@ -133,19 +135,10 @@ public class MainActivity extends AppCompatActivity {
             String str = elem.text().split(" ")[0];
             return str;
         }
-    }
-    public float getHrn() {
-        HryvnaCourse getHrn = new HryvnaCourse();
-        getHrn.execute();
-        float hryvnaRate = 0;
-        try {
-            hryvnaRate = Float.parseFloat(getHrn.get());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+        @Override
+        protected void onPostExecute(String str) {
+            hryvnaCourse = Float.parseFloat(str);
         }
-        return hryvnaRate;
     }
     protected boolean isOnline() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
