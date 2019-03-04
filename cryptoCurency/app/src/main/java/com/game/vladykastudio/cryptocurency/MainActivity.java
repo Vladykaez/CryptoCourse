@@ -14,6 +14,7 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
 import android.util.EventLogTags;
 import android.view.Gravity;
 import android.view.View;
@@ -25,18 +26,31 @@ import android.widget.Toast;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView txt, txt2, txt3;
-    Button btn;
-    ImageView img;
-    boolean flag = false;
-    SwipeRefreshLayout swipe;
-    float hryvnaCourse;
+    private TextView txt, txt2, txt3, txtName1, txtName2, txtName3, txtError;
+    private Button btn;
+    private ImageView img;
+    private boolean flag = false;
+    private SwipeRefreshLayout swipe;
+    private float hryvnaCourse;
+    private Retrofit retrofit;
+    CoinApi coins;
+    String apiKey = "6005b29b-783d-45e3-aa48-cabeb0fcee14";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,11 +58,24 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         new HryvnaCourse().execute();
-        txt = (TextView)findViewById(R.id.txt);
-        txt2 = (TextView)findViewById(R.id.txt2);
-        txt3 = (TextView)findViewById(R.id.txt3);
+        txt = findViewById(R.id.txt);
+        txt2 = findViewById(R.id.txt2);
+        txt3 = findViewById(R.id.txt3);
+        txtError = findViewById(R.id.txtError);
+
+        txtName1 = findViewById(R.id.txtName1);
+        txtName2 = findViewById(R.id.txtName2);
+        txtName3 = findViewById(R.id.txtName3);
+
+        retrofit = new Retrofit.Builder()
+                .baseUrl("https://pro-api.coinmarketcap.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        coins = retrofit.create(CoinApi.class);
+
         final Intent intent = new Intent(this, Main2Activity.class);
-        swipe = (SwipeRefreshLayout) findViewById(R.id.swipe);
+        swipe = findViewById(R.id.swipe);
         if(isOnline()) {
             setCryptocurrency();
         } else {
@@ -61,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
                     setCryptocurrency();
                 else
                     startActivity(intent);
+                Toast.makeText(MainActivity.this, "Update", Toast.LENGTH_SHORT).show();
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -71,9 +99,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     public void setCryptocurrency() {
-        new CryptocurrencyRate("Bitcoin", 0, txt).execute();
-        new CryptocurrencyRate("Ethereum", 0, txt2).execute();
-        new CryptocurrencyRate("Litecoin", 0, txt3).execute();
+        final Call<CoinResponse> coin = coins.getCoinListResponse(apiKey, 1, 5);
+        coin.enqueue(new Callback<CoinResponse>() {
+            @Override
+            public void onResponse(Call<CoinResponse> call, Response<CoinResponse> response) {
+                String bitcoin = Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPrice());
+                String ethereum = Double.toString(response.body().getCoinList().get(1).getQuote().getUsd().getPrice());
+                String litecoin = Double.toString(response.body().getCoinList().get(4).getQuote().getUsd().getPrice());
+
+                txt.setText(bitcoin.split("\\.")[0] + "." + bitcoin.split("\\.")[1].substring(0, 2) + "$");
+                txt2.setText(ethereum.split("\\.")[0] + "." + ethereum.split("\\.")[1].substring(0, 2) + "$");
+                txt3.setText(litecoin.split("\\.")[0] + "." + litecoin.split("\\.")[1].substring(0, 2) + "$");
+
+                txtName1.setText(response.body().getCoinList().get(0).getName());
+                txtName2.setText(response.body().getCoinList().get(1).getName());
+                txtName3.setText(response.body().getCoinList().get(4).getName());
+            }
+            @Override
+            public void onFailure(Call<CoinResponse> call, Throwable t) {
+                txtError.setText(t.toString());
+            }
+        });
     }
     public void onClickConvert(View v) {
         final Intent intent = new Intent(this, Main2Activity.class);
