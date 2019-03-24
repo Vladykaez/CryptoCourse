@@ -5,21 +5,29 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.graphics.Color;
 import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.support.constraint.ConstraintLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.RecyclerView;
 import android.util.EventLogTags;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,30 +50,26 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView txt, txt2, txt3, txtName1, txtName2, txtName3, txtError;
+    TextView name, rate, rate24, rate1, rate7;
     private Button btn;
     private ImageView img;
     private boolean flag = false;
     private SwipeRefreshLayout swipe;
     private float hryvnaCourse;
     private Retrofit retrofit;
-    CoinApi coins;
-    String apiKey = "6005b29b-783d-45e3-aa48-cabeb0fcee14";
+    private CoinApi coins;
+    private String apiKey = "6005b29b-783d-45e3-aa48-cabeb0fcee14";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        new HryvnaCourse().execute();
-        txt = findViewById(R.id.txt);
-        txt2 = findViewById(R.id.txt2);
-        txt3 = findViewById(R.id.txt3);
-        txtError = findViewById(R.id.txtError);
-
-        txtName1 = findViewById(R.id.txtName1);
-        txtName2 = findViewById(R.id.txtName2);
-        txtName3 = findViewById(R.id.txtName3);
+        name = findViewById(R.id.name);
+        rate = findViewById(R.id.rate);
+        rate24 = findViewById(R.id.rate24);
+        rate1 = findViewById(R.id.rate1);
+        rate7 = findViewById(R.id.rate7);
 
         retrofit = new Retrofit.Builder()
                 .baseUrl("https://pro-api.coinmarketcap.com/")
@@ -88,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
                     setCryptocurrency();
                 else
                     startActivity(intent);
-                Toast.makeText(MainActivity.this, "Update", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Update...", Toast.LENGTH_SHORT).show();
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -99,94 +103,49 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     public void setCryptocurrency() {
-        final Call<CoinResponse> coin = coins.getCoinListResponse(apiKey, 1, 5);
+        final Call<CoinResponse> coin = coins.getCoinListResponse(apiKey, 1, 1);
         coin.enqueue(new Callback<CoinResponse>() {
             @Override
             public void onResponse(Call<CoinResponse> call, Response<CoinResponse> response) {
-                String bitcoin = Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPrice());
-                String ethereum = Double.toString(response.body().getCoinList().get(1).getQuote().getUsd().getPrice());
-                String litecoin = Double.toString(response.body().getCoinList().get(4).getQuote().getUsd().getPrice());
+                Double rateUsd = response.body().getCoinList().get(0).getQuote().getUsd().getPrice();
+                name.setText(response.body().getCoinList().get(0).getSymbol() + " | " +  response.body().getCoinList().get(0).getName());
+                rate.setText(Double.toString(rateUsd).split("\\.")[0] + "." + Double.toString(rateUsd).split("\\.")[1].substring(0, 2) + "$");
+                rate24.setText("24h: " + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC24h()).split("\\.")[0] +
+                        "." + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC24h()).split("\\.")[1].substring(0, 2) + "%");
+                rate1.setText("1h: " + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC1h()).split("\\.")[0] +
+                        "." + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC1h()).split("\\.")[1].substring(0, 2) + "%");
+                rate7.setText("7d: " + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC7d()).split("\\.")[0] +
+                        "." + Double.toString(response.body().getCoinList().get(0).getQuote().getUsd().getPercentC7d()).split("\\.")[1].substring(0, 2) + "%");
 
-                txt.setText(bitcoin.split("\\.")[0] + "." + bitcoin.split("\\.")[1].substring(0, 2) + "$");
-                txt2.setText(ethereum.split("\\.")[0] + "." + ethereum.split("\\.")[1].substring(0, 2) + "$");
-                txt3.setText(litecoin.split("\\.")[0] + "." + litecoin.split("\\.")[1].substring(0, 2) + "$");
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC24h() < 0)
+                    rate24.setTextColor(Color.RED);
+                else
+                    rate24.setTextColor(Color.GREEN);
 
-                txtName1.setText(response.body().getCoinList().get(0).getName());
-                txtName2.setText(response.body().getCoinList().get(1).getName());
-                txtName3.setText(response.body().getCoinList().get(4).getName());
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC1h() < 0)
+                    rate1.setTextColor(Color.RED);
+                else
+                    rate1.setTextColor(Color.GREEN);
+
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC7d() < 0)
+                    rate7.setTextColor(Color.RED);
+                else
+                    rate7.setTextColor(Color.GREEN);
+
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC24h() == 0)
+                    rate24.setTextColor(Color.GRAY);
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC1h() == 0)
+                    rate1.setTextColor(Color.GRAY);
+                if (response.body().getCoinList().get(0).getQuote().getUsd().getPercentC7d() == 0)
+                    rate7.setTextColor(Color.GRAY);
             }
             @Override
             public void onFailure(Call<CoinResponse> call, Throwable t) {
-                txtError.setText(t.toString());
+                Log.d("Error", "onFailure: " + t);
             }
         });
     }
-    public void onClickConvert(View v) {
-        final Intent intent = new Intent(this, Main2Activity.class);
-        if(isOnline()) {
-            flag = !flag;
-            setCryptocurrency();
-        } else {
-            Toast.makeText(this, "No internet connection...", Toast.LENGTH_SHORT).show();
-            startActivity(intent);
-        }
-    }
-    class CryptocurrencyRate extends AsyncTask<Void, Void, String> {
-        Elements elem;
-        String cryptocurrencyName;
-        TextView txt;
-        int subIndex;
-
-        public CryptocurrencyRate(String cryptocurrencyName, int subIndex, TextView txt) {
-            this.cryptocurrencyName = cryptocurrencyName;
-            this.subIndex = subIndex;
-            this.txt = txt;
-        }
-
-        @Override
-        protected String doInBackground(Void... params) {
-            try {
-                Document doc = Jsoup.connect("https://myfin.by/crypto-rates/" + cryptocurrencyName).get();
-                elem = doc.select(".birzha_info_head_rates");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            String str = elem.text();
-            return str;
-        }
-        @Override
-        protected void onPostExecute(String str) {
-            if(flag) {
-                String string = str.split(" ")[0];
-                float uah = Float.parseFloat(string.substring(0, string.length()-1));
-                String hrn = String.valueOf(uah * hryvnaCourse);
-                if(hrn.split("\\.")[1].length() > 2 && subIndex < 2)
-                    subIndex++;
-                txt.setText(hrn.substring(0, hrn.length()-subIndex) + "₴");
-            } else {
-                txt.setText(str.split(" ")[0]);
-            }
-        }
-    }
-    class HryvnaCourse extends AsyncTask<Void, Void, String> {
-        Elements elem;
-        @Override
-        protected String doInBackground(Void... params) {
-            try {
-                Document doc = Jsoup.connect("https://kurs.com.ua/valyuta/usd").get();
-                elem = doc.select(".ipsKurs_rate");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            String str = elem.text().split(" ")[0];
-            return str;
-        }
-        @Override
-        protected void onPostExecute(String str) {
-            hryvnaCourse = Float.parseFloat(str);
-        }
-    }
-    protected boolean isOnline() {
+    boolean isOnline() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         if (netInfo != null && netInfo.isConnected())
