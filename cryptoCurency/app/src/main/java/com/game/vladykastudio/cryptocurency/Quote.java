@@ -9,21 +9,10 @@ public class Quote {
     @Expose
     private USD mUSD;
 
-    @SerializedName("BTS")
-    @Expose
-    private UAH mBTS;
-
     public USD getUsd() {
         return mUSD;
     }
     public void setUsd(USD mUSD) {
         this.mUSD = mUSD;
-    }
-
-    public UAH getBts() {
-        return mBTS;
-    }
-    public void setBts(UAH mBTS) {
-        this.mBTS = mBTS;
     }
 }
